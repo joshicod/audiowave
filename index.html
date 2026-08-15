@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OBS Audio Wave Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: transparent; /* Ensures OBS background is clear */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="visualizer"></canvas>
+
+    <script>
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+
+        // Set high-resolution canvas size
+        function resize() {
+            canvas.width = window.innerWidth * window.devicePixelRatio;
+            canvas.height = window.innerHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let bufferLength;
+
+        // Start audio capture on click (OBS interacts on click or automatically loads)
+        window.addEventListener('click', initAudio);
+        // Also try auto-starting for OBS
+        window.addEventListener('DOMContentLoaded', initAudio);
+
+        async function initAudio() {
+            if (audioContext) return; // Prevent multiple initializations
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256; // Controls number of bars. Higher = more bars.
+                
+                bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                source.connect(analyser);
+                draw();
+            } catch (err) {
+                console.error('Microphone access denied or unsupported:', err);
+            }
+        }
+
+        function draw() {
+            requestAnimationFrame(draw);
+
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Clear canvas every frame
+            ctx.clearRect(0, 0, width, height);
+
+            if (!analyser) return;
+
+            analyser.getByteFrequencyData(dataArray);
+
+            const barWidth = (width / bufferLength) * 1.5;
+            let barHeight;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                barHeight = dataArray[i] * (height / 255) * 0.6; // Scale height to fit screen
+
+                // Set bar colors (Neon Blue/Purple gradient vibe)
+                ctx.fillStyle = `hsl(${(i / bufferLength) * 120 + 200}, 100%, 50%)`;
+
+                // Draw centered bars
+                const y = (height - barHeight) / 2;
+                
+                // Draw rounded rectangles for a modern look
+                drawRoundedRect(ctx, x, y, barWidth - 4, barHeight, 4);
+
+                x += barWidth;
+            }
+        }
+
+        function drawRoundedRect(ctx, x, y, width, height, radius) {
+            if (height < radius) return; 
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+    </script>
+</body>
+</html>
