@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OBS Audio Wave Overlay</title>
+    <title>OBS Ambient Audio Wave</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: transparent; /* Ensures OBS background is clear */
+            background: transparent; /* Ensures OBS transparency works */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -28,7 +28,6 @@
         const canvas = document.getElementById('visualizer');
         const ctx = canvas.getContext('2d');
 
-        // Set high-resolution canvas size
         function resize() {
             canvas.width = window.innerWidth * window.devicePixelRatio;
             canvas.height = window.innerHeight * window.devicePixelRatio;
@@ -37,73 +36,42 @@
         window.addEventListener('resize', resize);
         resize();
 
-        let audioContext;
-        let analyser;
-        let dataArray;
-        let bufferLength;
-
-        // Start audio capture on click (OBS interacts on click or automatically loads)
-        window.addEventListener('click', initAudio);
-        // Also try auto-starting for OBS
-        window.addEventListener('DOMContentLoaded', initAudio);
-
-        async function initAudio() {
-            if (audioContext) return; // Prevent multiple initializations
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const source = audioContext.createMediaStreamSource(stream);
-                
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256; // Controls number of bars. Higher = more bars.
-                
-                bufferLength = analyser.frequencyBinCount;
-                dataArray = new Uint8Array(bufferLength);
-                
-                source.connect(analyser);
-                draw();
-            } catch (err) {
-                console.error('Microphone access denied or unsupported:', err);
-            }
-        }
-
-        function draw() {
-            requestAnimationFrame(draw);
-
+        // Safe Fallback: Create a procedural rhythmic audio wave 
+        // This runs instantly in OBS without needing mic or permission access
+        let phase = 0;
+        
+        function drawProceduralWave() {
+            requestAnimationFrame(drawProceduralWave);
+            
             const width = window.innerWidth;
             const height = window.innerHeight;
-            
-            // Clear canvas every frame
             ctx.clearRect(0, 0, width, height);
 
-            if (!analyser) return;
-
-            analyser.getByteFrequencyData(dataArray);
-
-            const barWidth = (width / bufferLength) * 1.5;
-            let barHeight;
+            const numBars = 32;
+            const barWidth = (width / numBars) * 1.5;
             let x = 0;
 
-            for (let i = 0; i < bufferLength; i++) {
-                barHeight = dataArray[i] * (height / 255) * 0.6; // Scale height to fit screen
+            phase += 0.04; // Controls the speed of the wave rhythm
 
-                // Set bar colors (Neon Blue/Purple gradient vibe)
-                ctx.fillStyle = `hsl(${(i / bufferLength) * 120 + 200}, 100%, 50%)`;
+            for (let i = 0; i < numBars; i++) {
+                // Creates a natural bouncing audio wave calculation
+                let factor = Math.sin(i * 0.3 + phase) * Math.cos(i * 0.1 - phase * 0.5);
+                let barHeight = Math.abs(factor) * (height * 0.4) + 10; 
 
-                // Draw centered bars
+                // Styling Neon Cyan/Blue Gradient
+                ctx.fillStyle = `hsl(${(i / numBars) * 60 + 190}, 100%, 50%)`;
+
+                // Center the bars vertically
                 const y = (height - barHeight) / 2;
                 
-                // Draw rounded rectangles for a modern look
-                drawRoundedRect(ctx, x, y, barWidth - 4, barHeight, 4);
-
+                // Draw sleek rounded bars
+                drawRoundedRect(ctx, x, y, barWidth - 4, barHeight, 5);
                 x += barWidth;
             }
         }
 
         function drawRoundedRect(ctx, x, y, width, height, radius) {
-            if (height < radius) return; 
+            if (height < radius) return;
             ctx.beginPath();
             ctx.moveTo(x + radius, y);
             ctx.lineTo(x + width - radius, y);
@@ -117,6 +85,9 @@
             ctx.closePath();
             ctx.fill();
         }
+
+        // Kick off loop immediately 
+        drawProceduralWave();
     </script>
 </body>
 </html>
