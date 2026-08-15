@@ -2,15 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OBS Ambient Audio Wave</title>
+    <title>OBS Vertical Audio Wave</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: transparent; /* Ensures OBS transparency works */
+            background: transparent; /* Clear background for OBS */
             display: flex;
-            justify-content: center;
-            align-items: center;
+            align-items: flex-end; /* Aligns canvas container to the bottom */
             height: 100vh;
         }
         canvas {
@@ -36,58 +35,59 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Safe Fallback: Create a procedural rhythmic audio wave 
-        // This runs instantly in OBS without needing mic or permission access
         let phase = 0;
         
-        function drawProceduralWave() {
-            requestAnimationFrame(drawProceduralWave);
+        function drawVerticalWave() {
+            requestAnimationFrame(drawVerticalWave);
             
             const width = window.innerWidth;
             const height = window.innerHeight;
             ctx.clearRect(0, 0, width, height);
 
-            const numBars = 32;
-            const barWidth = (width / numBars) * 1.5;
+            // Increased number of bars for a denser, smoother visual wave look
+            const numBars = 64; 
+            const barWidth = width / numBars;
             let x = 0;
 
-            phase += 0.04; // Controls the speed of the wave rhythm
+            phase += 0.05; // Wave animation speed
 
             for (let i = 0; i < numBars; i++) {
-                // Creates a natural bouncing audio wave calculation
-                let factor = Math.sin(i * 0.3 + phase) * Math.cos(i * 0.1 - phase * 0.5);
-                let barHeight = Math.abs(factor) * (height * 0.4) + 10; 
-
-                // Styling Neon Cyan/Blue Gradient
-                ctx.fillStyle = `hsl(${(i / numBars) * 60 + 190}, 100%, 50%)`;
-
-                // Center the bars vertically
-                const y = (height - barHeight) / 2;
+                // Procedural wave algorithm simulating rising music beats
+                let wave1 = Math.sin(i * 0.15 + phase * 1.2);
+                let wave2 = Math.cos(i * 0.08 - phase * 0.6);
+                let combinedFactor = Math.abs(wave1 * wave2);
                 
-                // Draw sleek rounded bars
-                drawRoundedRect(ctx, x, y, barWidth - 4, barHeight, 5);
+                // Scale height so it stays in the lower/middle half of your stream window
+                let barHeight = combinedFactor * (height * 0.6) + 15; 
+
+                // Sleek Purple-to-Cyan gradient calculation based on bar position
+                ctx.fillStyle = `hsl(${(i / numBars) * 100 + 240}, 100%, 60%)`;
+
+                // Calculate Y position to start exactly from the bottom floor of the canvas
+                const y = height - barHeight;
+                
+                // Draw vertical bars with a tiny 2px gap between them
+                drawTopRoundedRect(ctx, x, y, barWidth - 2, barHeight, 6);
                 x += barWidth;
             }
         }
 
-        function drawRoundedRect(ctx, x, y, width, height, radius) {
-            if (height < radius) return;
+        // Custom drawing function to only round the TOP corners of the bars
+        function drawTopRoundedRect(ctx, x, y, width, height, radius) {
+            if (height < radius) radius = height;
             ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
+            ctx.moveTo(x, y + height); // Bottom-left corner
+            ctx.lineTo(x, y + radius); // Up to top-left start
+            ctx.quadraticCurveTo(x, y, x + radius, y); // Top-left curve
+            ctx.lineTo(x + width - radius, y); // Across to top-right start
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius); // Top-right curve
+            ctx.lineTo(x + width, y + height); // Down to bottom-right corner
+            ctx.closePath(); // Closes bottom flat line automatically
             ctx.fill();
         }
 
-        // Kick off loop immediately 
-        drawProceduralWave();
+        // Start the infinite animation loop
+        drawVerticalWave();
     </script>
 </body>
 </html>
